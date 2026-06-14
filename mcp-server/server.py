@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """MCP Server for Gaokao admission database queries."""
 import os
-import sys
 import gzip
 import shutil
 import sqlite3
 import json
-from mcp.server import Server
-from mcp.types import Tool, TextContent
 
 # ── Paths ────────────────────────────────────────────
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +20,6 @@ def ensure_db():
             with open(DB_PATH, "wb") as f:
                 shutil.copyfileobj(gz, f)
 
-    # Open read-only using URI mode with immutable query parameter
     db_uri = f"file:{DB_PATH}?mode=ro&immutable=1"
     conn = sqlite3.connect(db_uri, uri=True)
     conn.row_factory = sqlite3.Row
@@ -32,10 +28,13 @@ def ensure_db():
 conn = ensure_db()
 
 # ── MCP Server ────────────────────────────────────────
-server = Server("gaokao-admission")
+from mcp.server.fastmcp import FastMCP
 
-@server.tool()
-async def query_admission(
+mcp = FastMCP("gaokao-admission", json_response=True)
+
+
+@mcp.tool()
+def query_admission(
     province: str | None = None,
     school: str | None = None,
     major: str | None = None,
@@ -62,19 +61,14 @@ async def query_admission(
         JSON array of matching records sorted by year DESC, rank ASC.
         Each record: {school, major, score, rank, province, year}
     """
-    import json
-
-    # Validate: at least province or school required
     if not province and not school:
         return json.dumps(
             {"error": "At least `province` or `school` must be provided"},
             ensure_ascii=False,
         )
 
-    # Clamp limit
     limit = min(max(1, limit), 50)
 
-    # Build query dynamically
     conditions = []
     params = []
 
@@ -136,8 +130,8 @@ async def query_admission(
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
-@server.tool()
-async def list_provinces() -> str:
+@mcp.tool()
+def list_provinces() -> str:
     """List available provinces with record counts and year ranges.
 
     Returns:
@@ -172,4 +166,4 @@ async def list_provinces() -> str:
 
 # ── Entry point ───────────────────────────────────────
 if __name__ == "__main__":
-    server.run(transport="stdio")
+    mcp.run(transport="stdio")
