@@ -41,7 +41,7 @@ async def query_admission(
     major: str | None = None,
     max_rank: int | None = None,
     min_rank: int | None = None,
-    year: int = 2024,
+    year: int | None = None,
     limit: int = 20,
 ) -> str:
     """Query admission database with flexible parameter combinations.
@@ -55,7 +55,7 @@ async def query_admission(
         major: Major name keyword for fuzzy matching (e.g. '计算机')
         max_rank: Upper bound for admission rank (inclusive)
         min_rank: Lower bound for admission rank (inclusive)
-        year: Admission year, default 2024
+        year: Admission year filter (optional). When None, no year filter is applied.
         limit: Max results to return, default 20, hard cap 50
 
     Returns:
@@ -89,6 +89,10 @@ async def query_admission(
     if major:
         conditions.append("major LIKE ?")
         params.append(f"%{major}%")
+
+    if year is not None:
+        conditions.append("year = ?")
+        params.append(year)
 
     if max_rank is not None:
         conditions.append("rank IS NOT NULL AND rank <= ?")
