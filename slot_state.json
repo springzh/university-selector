@@ -1,0 +1,9 @@
+{
+  "province":    {"status": "pending", "value": ""},
+  "score_rank":  {"status": "pending", "value": ""},
+  "subject":     {"status": "pending", "value": ""},
+  "interest":    {"status": "pending", "value": ""},
+  "region":      {"status": "pending", "value": ""},
+  "family":      {"status": "pending", "value": ""},
+  "goal":        {"status": "pending", "value": ""}
+}

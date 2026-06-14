@@ -319,58 +319,48 @@
 
 ---
 
-## 快速开始
+## 安装（Claude Code Skill）
 
-> ⭐ **完全零基础、不懂编程？** → [小白教程：10分钟，复制粘贴搞定](小白教程-零基础也能用.md)
-
-
-### 三步跑起来
+### 1. 安装 MCP Server 依赖
 
 ```bash
-# 1. 安装依赖
-pip install openai pywin32
-
-# 2. 配置 API Key
-cp .env.example .env
-# 用记事本打开 .env，填入 LLM_API_KEY=你的key
-
-# 3. 运行
-python agent.py
+pip install mcp
 ```
 
-Windows 用户直接双击 **`启动.bat`**。
+### 2. 配置 Claude Code MCP
 
-> 📊 录取数据库已包含在仓库中（20MB压缩包，首次运行自动解压为132MB）。29省114万条真实录取数据。
+在 Claude Code 设置中注册 MCP Server。编辑 `~/.claude/settings.json`（或项目的 `.claude/settings.json`）：
 
-### 模型选择
-
-任何 OpenAI 兼容协议的模型都能用。但不同模型效果差异很大：
-
-| 模型 | 推荐度 | 中文 | 指令遵循 | 速度 | 费用 | 说明 |
-|------|--------|------|---------|------|------|------|
-| **DeepSeek V3/V4** | 首选 | 极好 | 强 | 快 | ~1元/百万token | deepseek-chat 或 deepseek-v4-pro |
-| **通义千问 Qwen-Plus** | 推荐 | 极好 | 强 | 快 | ~2元/百万token | 有免费额度 |
-| **智谱 GLM-4** | 推荐 | 好 | 较强 | 快 | ~1元/百万token | 国产稳定 |
-| **Moonshot v1** | 可选 | 好 | 较强 | 快 | ~2元/百万token | 128K长上下文 |
-| **GPT-4o** | 可选 | 好 | 极强 | 中 | 较贵 | 需国外网络 |
-| **Ollama 本地** | 可用 | 看模型 | 弱-中 | 看配置 | 免费 | 推荐 qwen2.5:14b+ |
-
-**不推荐**：
-- 7B 级别小模型 — 无法稳定遵循复杂指令，容易复读、格式错乱
-- DeepSeek R1 — 推理模型会自言自语，不适合对话场景
-
-在 `.env` 里设置 `LLM_PROVIDER` 即可，不用记 base_url：
-
-```bash
-LLM_PROVIDER=deepseek   # DeepSeek（首选）
-LLM_PROVIDER=qwen       # 通义千问
-LLM_PROVIDER=glm        # 智谱 GLM
-LLM_PROVIDER=moonshot   # Moonshot
-LLM_PROVIDER=openai     # GPT-4o
-LLM_PROVIDER=ollama     # 本地模型
+```json
+{
+  "mcpServers": {
+    "gaokao-admission": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["mcp-server/server.py"],
+      "cwd": "/path/to/university-selector"
+    }
+  }
+}
 ```
 
-完整配置说明 → [TUTORIAL.md](TUTORIAL.md)
+### 3. 安装 Skill
+
+将本仓库克隆到本地后，在 Claude Code 中加载 `SKILL.md`。
+
+### 4. 使用
+
+直接在 Claude Code 对话中描述你的情况，Skill 会自动激活：
+
+```
+湖北物理类580分，位次28000，普通家庭，想去武汉学计算机
+```
+
+### 模型要求
+
+推荐使用 Claude Opus 或 Sonnet（需要较强的指令遵循和推理能力）。
+
+> 📊 录取数据库已包含在仓库中（20MB压缩包，MCP Server首次运行自动解压为132MB）。29省114万条真实录取数据。
 
 > ⭐ **完全零基础？** → [小白教程：10分钟，复制粘贴就能用](小白教程-零基础也能用.md)
 
@@ -379,16 +369,17 @@ LLM_PROVIDER=ollama     # 本地模型
 ## 技术架构
 
 ```
-用户输入 → 意图检测 → 槽位提取 → LLM 推理 → 冲稳保输出
-              │            │           │
-              ▼            ▼           ▼
-         知识库检索    实时搜索    OpenAI兼容API
-         (17模块)    (最新数据)   (任意模型)
+用户输入 → Claude (加载 SKILL.md)
+              │
+              ├─ 意图检测 + 槽位提取 (Claude 推理)
+              ├─ MCP query_admission() → SQLite 数据库
+              ├─ WebSearch → 联网搜索最新数据
+              └─ 冲稳保分档 (Claude 推理) → 自然语言回复
 ```
 
-- **模型无关**：任何 OpenAI 兼容 API 都可以
-- **独立部署**：一个 Python 文件，不依赖任何特定平台
-- **本地知识库**：Markdown 格式，可随时修改扩充
+- **Skill 驱动**：全部咨询逻辑由 SKILL.md 指令定义，Claude 原生执行
+- **MCP 数据层**：Python MCP Server 封装 SQLite，提供结构化查询
+- **跨平台**：不再依赖 Windows/pywin32，macOS/Linux/Windows 均可使用
 
 ---
 
@@ -408,17 +399,31 @@ LLM_PROVIDER=ollama     # 本地模型
 ## 项目结构
 
 ```
-├── agent.py              # 主程序
-├── knowledge_base.md     # 知识库（17模块，850+行）
-├── system_prompt.md      # Agent 行为规则
-├── README.md             # 本文件
-├── TUTORIAL.md           # 零基础安装使用教程
-├── LICENSE               # MIT 协议
-├── .env.example          # 配置模板
+├── SKILL.md               # Skill 主文件（指令+知识库）
+├── mcp-server/
+│   ├── server.py           # MCP Server（数据库查询工具）
+│   └── requirements.txt    # Python 依赖
+├── slot_state.json         # 槽位状态文件（运行时）
+├── knowledge_base.md       # 知识库源文件（参考）
+├── system_prompt.md        # 人设源文件（参考）
+├── admission_clean.db.gz   # 录取数据库（20MB压缩包）
+├── README.md
+├── TUTORIAL.md
+├── LICENSE
 ├── .gitignore
-├── 启动.bat              # Windows 一键启动
+├── legacy/                 # 退役文件（原 Python CLI 版本）
+│   ├── agent.py
+│   ├── gaokao_data.py
+│   ├── real_data.py
+│   ├── .env.example
+│   └── 启动.bat
+├── scripts/                # 数据库构建工具
+│   ├── build_all_provinces.py
+│   ├── build_real_db.py
+│   ├── clean_data.py
+│   └── verify_provinces.py
 └── examples/
-    └── demo_conversation.md  # 案例对话
+    └── demo_conversation.md
 ```
 
 ---
