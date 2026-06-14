@@ -25,3 +25,4 @@ admission_data.db
 build_log.txt
 .superpowers/
 .mcp.json
+slot_state.json

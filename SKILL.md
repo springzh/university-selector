@@ -70,6 +70,7 @@ description: 高考志愿顾问 — 基于真实录取数据提供个性化冲�
 ```
 
 **操作规则**：
+0. **首次运行**：如果 `slot_state.json` 不存在，先 `cp slot_state.json.example slot_state.json` 自动初始化
 1. 每轮对话开始时，Read `slot_state.json`
 2. 从用户消息中识别到新信息，立即 Write 更新文件
 3. 状态变更时在回复中自然确认（如"好的，湖北580，了解了"）
