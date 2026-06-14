@@ -5,7 +5,7 @@ import sys
 import gzip
 import shutil
 import sqlite3
-import asyncio
+import json
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 
@@ -144,28 +144,30 @@ async def list_provinces() -> str:
         JSON array sorted by record_count DESC.
         Each entry: {province, record_count, years}
     """
-    import json
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT province, COUNT(*) AS cnt, "
+            "MIN(year) AS min_year, MAX(year) AS max_year "
+            "FROM admission "
+            "GROUP BY province "
+            "ORDER BY cnt DESC"
+        )
+        rows = cursor.fetchall()
 
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT province, COUNT(*) AS cnt, "
-        "MIN(year) AS min_year, MAX(year) AS max_year "
-        "FROM admission "
-        "GROUP BY province "
-        "ORDER BY cnt DESC"
-    )
-    rows = cursor.fetchall()
+        results = [
+            {
+                "province": row["province"],
+                "record_count": row["cnt"],
+                "years": f"{row['min_year']}-{row['max_year']}",
+            }
+            for row in rows
+        ]
 
-    results = [
-        {
-            "province": row["province"],
-            "record_count": row["cnt"],
-            "years": f"{row['min_year']}-{row['max_year']}",
-        }
-        for row in rows
-    ]
+        return json.dumps(results, ensure_ascii=False, indent=2)
 
-    return json.dumps(results, ensure_ascii=False, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
 # ── Entry point ───────────────────────────────────────
